@@ -66,6 +66,13 @@ header{margin-bottom:32px}
 .menu-link.active{background:var(--accent-soft);color:var(--accent-dark)}
 .menu-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;min-width:24px;border-radius:50%;background:var(--line);color:var(--ink-soft);font-size:12px;font-weight:700}
 .menu-link.active .menu-num{background:var(--accent);color:#fff}
+
+.course-list{list-style:none;margin:0;padding:0}
+.course-item{border-bottom:1px solid var(--line)}
+.course-item:last-child{border-bottom:none}
+.course-link{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;color:var(--ink);text-decoration:none;font-weight:600;font-size:14.5px}
+.course-link:hover{background:var(--accent-soft);color:var(--accent-dark)}
+.course-arrow{color:var(--ink-soft);font-size:16px;flex:none}
 h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(32px,5vw,46px);line-height:1.05;letter-spacing:-.01em;margin:14px 0 8px;text-wrap:balance}
 .sub{color:var(--ink-soft);font-size:15.5px;max-width:60ch;line-height:1.55}
 .meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12.5px;color:var(--ink-soft)}
@@ -127,9 +134,9 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
       <span class="eyebrow" id="liveBadge">View only</span>
       <button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Open menu"><span></span><span></span><span></span></button>
     </div>
-    <h1>Grade Ledger</h1>
-    <p class="sub">A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.</p>
-    <div class="meta"><span>Last updated <strong id="updatedAt">—</strong></span><span id="studentCountMeta"></span></div>
+    <h1 id="pageTitle">Grade Ledger</h1>
+    <p class="sub" id="pageSub">A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.</p>
+    <div class="meta" id="metaRow"><span>Last updated <strong id="updatedAt">—</strong></span><span id="studentCountMeta"></span></div>
   </header>
 
   <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
@@ -144,14 +151,23 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
     </ul>
   </nav>
 
-  <div class="summary">
-    <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Students</div></div>
-    <div class="stat"><div class="n" id="statAvg">0%</div><div class="l">Average progress</div></div>
-    <div class="stat"><div class="n" id="statCompleted">0</div><div class="l">At 100% progress</div></div>
-    <div class="stat"><div class="n" id="statTested">0</div><div class="l">Tests recorded</div></div>
+  <div id="gradeView">
+    <div class="summary">
+      <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Students</div></div>
+      <div class="stat"><div class="n" id="statAvg">0%</div><div class="l">Average progress</div></div>
+      <div class="stat"><div class="n" id="statCompleted">0</div><div class="l">At 100% progress</div></div>
+      <div class="stat"><div class="n" id="statTested">0</div><div class="l">Tests recorded</div></div>
+    </div>
+
+    <div id="groups"></div>
   </div>
 
-  <div id="groups"></div>
+  <div id="coursesView" style="display:none">
+    <section class="subject">
+      <div class="subject-head"><div class="subject-name">Reference Courses</div></div>
+      <ul class="course-list" id="courseList"></ul>
+    </section>
+  </div>
 
   <footer><span>Student Progress &amp; Grade Tracker</span><span id="syncNote">Refreshes automatically every 20s</span></footer>
 </div>
@@ -244,8 +260,45 @@ function selectMenu(e,key){
   document.querySelectorAll(".menu-link").forEach(l=>l.classList.remove("active"));
   e.currentTarget.classList.add("active");
   closeMenu();
-  if(key==="courses"){alert("Courses is coming soon.");}
+  if(key==="courses"){showCoursesView();}else{showGradeView();}
 }
+
+const COURSES=[
+  {name:"Introduction to QGIS",url:"https://courses.spatialthoughts.com/introduction-to-qgis.html#introduction"},
+  {name:"Measurement, Reporting and Verification for Environmental Integrity: Introduction",url:"https://elearning.fao.org/course/view.php?id=1053"},
+  {name:"Measurement, Reporting and Verification for Environmental Integrity: Application",url:"https://elearning.fao.org/course/view.php?id=1207"},
+  {name:"Preparing a Greenhouse Gas Inventory under the Enhanced Transparency Framework",url:"https://elearning.fao.org/course/view.php?id=618&lang=en"},
+  {name:"Assessing Uncertainties in the National Greenhouse Gas Inventory: A Focus on Land Use",url:"https://elearning.fao.org/course/view.php?id=788&lang=en"},
+  {name:"National Forest Inventory e-learning series — Courses 1–8",url:"https://elearning.fao.org/course/NFI-series-en"},
+  {name:"Fundamentals of Remote Sensing",url:"https://www.earthdata.nasa.gov/learn/trainings/fundamentals-remote-sensing"},
+  {name:"Visualizing Land Cover and Land Use Change with NASA Satellite Imagery",url:"https://www.earthdata.nasa.gov/learn/trainings/visualizing-land-cover-land-use-change-nasa-satellite-imagery"},
+  {name:"An Introduction to Climate Change and Human Rights",url:"https://unccelearn.org/course/view.php?id=136&lang=en&page=overview"},
+  {name:"Basic Online Training on Grievance Redress Mechanisms",url:"https://ilearn.greenclimate.fund/thematicarea/category?id=3"},
+  {name:"Climate Change International Legal Regime",url:"https://unccelearn.org/course/view.php?id=68&page=overview"},
+  {name:"A Participant Guide of the UN Climate Change Process",url:"https://unccelearn.org/course/view.php?id=174&lang=en&page=overview"},
+  {name:"The National Implementation of the Paris Agreement",url:"https://unccelearn.org/course/view.php?id=176&lang=en&page=overview"},
+  {name:"Enhancing Policy Coherence through Public Expenditure Analysis for Forests",url:"https://elearning.fao.org/course/view.php?id=1366"},
+  {name:"Introduction to Sustainable Finance Taxonomies",url:"https://unccelearn.org/course/view.php?id=160&lang=en&page=overview"},
+  {name:"Nature-based Solutions for Sustainable Development",url:"https://www.learningfornature.org/en/courses/nature-based-solutions-for-sustainable-development/"}
+];
+function renderCourses(){
+  document.getElementById("courseList").innerHTML=COURSES.map(c=>`<li class="course-item"><a class="course-link" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}<span class="course-arrow">↗</span></a></li>`).join("");
+}
+function showGradeView(){
+  document.getElementById("pageTitle").textContent="Grade Ledger";
+  document.getElementById("pageSub").textContent="A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.";
+  document.getElementById("metaRow").style.display="";
+  document.getElementById("gradeView").style.display="";
+  document.getElementById("coursesView").style.display="none";
+}
+function showCoursesView(){
+  document.getElementById("pageTitle").textContent="Courses";
+  document.getElementById("pageSub").textContent="Reference courses and training materials. Tap a course to open its source in a new tab.";
+  document.getElementById("metaRow").style.display="none";
+  document.getElementById("gradeView").style.display="none";
+  document.getElementById("coursesView").style.display="";
+}
+renderCourses();
 </script>
 </body>
 </html>
