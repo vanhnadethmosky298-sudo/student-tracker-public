@@ -82,12 +82,18 @@ header{margin-bottom:32px}
 
 .chart-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
 .chart-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;margin-bottom:16px}
-.chart-bars{display:flex;align-items:flex-end;gap:20px;height:180px;padding:0 4px;overflow-x:auto}
-.chart-bar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:60px;height:100%}
-.chart-bar-track{width:30px;flex:1;background:var(--line);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
-.chart-bar-fill{width:100%;background:var(--accent);border-radius:6px;transition:height .3s ease}
-.chart-bar-pct{font-size:12px;font-weight:700;color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums}
-.chart-bar-label{font-size:11px;color:var(--ink-soft);margin-top:2px;text-align:center;max-width:74px;word-break:break-word;line-height:1.3}
+.line-chart{width:100%;height:auto;display:block;overflow:visible}
+.chart-grad-start{stop-color:var(--accent);stop-opacity:.32}
+.chart-grad-end{stop-color:var(--accent);stop-opacity:0}
+.chart-grid{stroke:var(--line);stroke-width:1}
+.chart-line{fill:none;stroke:var(--accent-dark);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.chart-dot{fill:var(--card);stroke:var(--accent-dark);stroke-width:2.5}
+.chart-value{fill:var(--accent-dark);font-weight:700;font-size:13px;font-family:"IBM Plex Sans",system-ui,sans-serif}
+.chart-xlabel{fill:var(--ink-soft);font-size:11px;font-family:"IBM Plex Sans",system-ui,sans-serif}
+
+.title-meta{display:flex;gap:16px;flex-wrap:wrap;margin:-4px 0 10px}
+.title-meta-item{font-size:13.5px;color:var(--ink-soft);font-weight:600}
+.title-meta-item strong{color:var(--accent-dark);font-weight:700;font-variant-numeric:tabular-nums}
 h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(32px,5vw,46px);line-height:1.05;letter-spacing:-.01em;margin:14px 0 8px;text-wrap:balance}
 .sub{color:var(--ink-soft);font-size:15.5px;max-width:60ch;line-height:1.55}
 .meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12.5px;color:var(--ink-soft)}
@@ -153,6 +159,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
       <button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Open menu"><span></span><span></span><span></span></button>
     </div>
     <h1 id="pageTitle">Grade Ledger</h1>
+    <div id="pageTitleMeta" class="title-meta" style="display:none"></div>
     <p class="sub" id="pageSub">A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.</p>
     <div class="meta" id="metaRow"><span>Last updated <strong id="updatedAt">—</strong></span><span id="studentCountMeta"></span></div>
   </header>
@@ -354,21 +361,70 @@ function selectMenu(e,key){
   if(key==="courses"){showCoursesView();}else{showGradeView();}
 }
 
+function buildLineChart(rows){
+  const w=640,h=220;
+  const padL=36,padR=36,padTop=40,padBottom=40;
+  const plotW=w-padL-padR,plotH=h-padTop-padBottom;
+  const n=rows.length;
+  const pts=rows.map((s,i)=>{
+    const pct=Math.max(0,Math.min(100,Number(s.progress)||0));
+    const x=n>1?padL+(plotW*i/(n-1)):padL+plotW/2;
+    const y=padTop+plotH*(1-pct/100);
+    return {x,y,pct,label:s.subject||"Other"};
+  });
+  const baseline=padTop+plotH;
+  let linePath;
+  if(pts.length>1){
+    linePath=`M ${pts[0].x} ${pts[0].y}`;
+    for(let i=0;i<pts.length-1;i++){
+      const p0=pts[i],p1=pts[i+1];
+      const midX=(p0.x+p1.x)/2;
+      linePath+=` C ${midX} ${p0.y}, ${midX} ${p1.y}, ${p1.x} ${p1.y}`;
+    }
+  }else{
+    linePath=`M ${pts[0].x-24} ${pts[0].y} L ${pts[0].x+24} ${pts[0].y}`;
+  }
+  const areaPath=pts.length>1
+    ? linePath+` L ${pts[pts.length-1].x} ${baseline} L ${pts[0].x} ${baseline} Z`
+    : `M ${pts[0].x-24} ${baseline} L ${pts[0].x-24} ${pts[0].y} L ${pts[0].x+24} ${pts[0].y} L ${pts[0].x+24} ${baseline} Z`;
+  const gridLines=[0,50,100].map(v=>{
+    const y=padTop+plotH*(1-v/100);
+    return `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" class="chart-grid"/>`;
+  }).join("");
+  const dots=pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="5" class="chart-dot"/>`).join("");
+  const valueLabels=pts.map(p=>`<text x="${p.x}" y="${Math.max(16,p.y-14)}" text-anchor="middle" class="chart-value">${fmtPct(p.pct)}</text>`).join("");
+  const xLabels=pts.map(p=>`<text x="${p.x}" y="${h-14}" text-anchor="middle" class="chart-xlabel">${esc(p.label)}</text>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" class="line-chart" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" class="chart-grad-start"/>
+        <stop offset="100%" class="chart-grad-end"/>
+      </linearGradient>
+    </defs>
+    ${gridLines}
+    <path d="${areaPath}" fill="url(#areaGrad)" stroke="none"/>
+    <path d="${linePath}" class="chart-line"/>
+    ${dots}
+    ${valueLabels}
+    ${xLabels}
+  </svg>`;
+}
+
 function renderStudentView(){
   const rows=LAST_STUDENTS.filter(s=>(s.name||"").trim().toLowerCase()===(currentStudentName||"").trim().toLowerCase());
   const container=document.getElementById("studentDetail");
+  const metaHolder=document.getElementById("pageTitleMeta");
   if(!rows.length){
     container.innerHTML='<div class="empty"><div class="glyph">Δ</div><p>No records found for this student.</p></div>';
+    metaHolder.style.display="none";
     return;
   }
-  const chartBars=rows.map(s=>{
-    const pct=Math.max(0,Math.min(100,Number(s.progress)||0));
-    return `<div class="chart-bar-wrap">
-      <div class="chart-bar-track"><div class="chart-bar-fill" style="height:${pct}%"></div></div>
-      <div class="chart-bar-pct">${fmtPct(s.progress)}</div>
-      <div class="chart-bar-label">${esc(s.subject||"Other")}</div>
-    </div>`;
-  }).join("");
+  const avgProgress=rows.reduce((a,s)=>a+(Number(s.progress)||0),0)/rows.length;
+  const percentages=rows.filter(s=>s.percentage!==null&&s.percentage!==undefined).map(s=>Number(s.percentage));
+  const avgScore=percentages.length?percentages.reduce((a,b)=>a+b,0)/percentages.length:null;
+  metaHolder.innerHTML=`<span class="title-meta-item">Avg Progress <strong>${fmtPct(avgProgress)}</strong></span><span class="title-meta-item">Avg Score <strong>${avgScore===null?"—":avgScore.toFixed(2)+"%"}</strong></span>`;
+  metaHolder.style.display="flex";
+
   const tableRows=rows.map(s=>`<tr>
       <td class="name">${esc(s.subject||"Other")}</td>
       <td><div class="progress-cell"><div class="bar"><span style="width:${Math.max(0,Math.min(100,Number(s.progress)||0))}%"></span></div><span class="pct">${fmtPct(s.progress)}</span></div></td>
@@ -379,7 +435,7 @@ function renderStudentView(){
   container.innerHTML=`
     <div class="chart-card">
       <div class="chart-title">Progress by course</div>
-      <div class="chart-bars">${chartBars}</div>
+      ${buildLineChart(rows)}
     </div>
     <section class="subject">
       <div class="subject-head"><div class="subject-name">Course Records</div></div>
@@ -436,6 +492,7 @@ function renderCourses(){
 function showGradeView(){
   document.getElementById("pageTitle").textContent="Grade Ledger";
   document.getElementById("pageSub").textContent="A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.";
+  document.getElementById("pageTitleMeta").style.display="none";
   document.getElementById("metaRow").style.display="";
   document.getElementById("gradeView").style.display="";
   document.getElementById("coursesView").style.display="none";
@@ -444,6 +501,7 @@ function showGradeView(){
 function showCoursesView(){
   document.getElementById("pageTitle").textContent="Courses";
   document.getElementById("pageSub").textContent="Reference courses and training materials. Tap a course to open its source in a new tab.";
+  document.getElementById("pageTitleMeta").style.display="none";
   document.getElementById("metaRow").style.display="none";
   document.getElementById("gradeView").style.display="none";
   document.getElementById("coursesView").style.display="";
