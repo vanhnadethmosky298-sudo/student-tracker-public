@@ -99,10 +99,13 @@ h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(32px,5vw
 .stat .l{color:var(--ink-soft);font-size:12.5px;margin-top:2px}
 
 .subject{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);margin-bottom:20px}
-.subject-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--accent-soft)}
+.subject-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--accent-soft);cursor:pointer;user-select:none}
 .subject-name{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:19px;color:var(--accent-dark)}
-.pills{display:flex;gap:7px;flex-wrap:wrap}
+.pills{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .pill{font-size:11.5px;font-weight:600;color:var(--ink-soft);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.chevron{display:inline-block;color:var(--accent-dark);font-size:14px;transition:transform .2s ease;margin-left:2px}
+.subject.collapsed .tablewrap{display:none}
+.subject.collapsed .chevron{transform:rotate(-90deg)}
 
 .tablewrap{overflow-x:auto}
 table{width:100%;min-width:640px;border-collapse:collapse}
@@ -174,6 +177,8 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
       <div class="stat"><div class="n" id="statTested">0</div><div class="l">Tests recorded</div></div>
     </div>
 
+    <div id="overallSection"></div>
+
     <div id="groups"></div>
   </div>
 
@@ -197,6 +202,7 @@ const POLL_MS = 20000;
 
 let LAST_STUDENTS=[];
 let currentStudentName=null;
+let collapsedSections=new Set();
 
 function fmtPct(n){const v=Number(n)||0;return (Math.round(v*10)/10).toString().replace(/\.0$/,'')+"%";}
 function esc(s){const d=document.createElement("div");d.textContent=String(s??"");return d.innerHTML;}
@@ -233,6 +239,7 @@ function render(payload){
   const holder=document.getElementById("groups");
   if(!total){
     holder.innerHTML=`<div class="empty"><div class="glyph">Δ</div><p>No students have been added yet. Once the tracker owner records progress and test results, they'll appear here grouped by subject.</p></div>`;
+    document.getElementById("overallSection").innerHTML="";
     return;
   }
   const groups=groupBySubject(students);
@@ -247,7 +254,7 @@ function render(payload){
         <td class="score">${s.testScore===null||s.testScore===undefined?"—":`${s.testScore}/${s.maximumScore}`}</td>
         <td>${resultHtml(s)}</td>
       </tr>`).join("");
-    return `<section class="subject">
+    return `<section class="subject${collapsedSections.has(g.subject)?" collapsed":""}" data-section="${escAttr(g.subject)}">
       <div class="subject-head">
         <div class="subject-name">${esc(g.subject)}</div>
         <div class="pills">
@@ -255,6 +262,7 @@ function render(payload){
           <span class="pill">Avg ${fmtPct(gAvg)}</span>
           <span class="pill">${gCompleted} completed</span>
           <span class="pill">${gTested} tested</span>
+          <span class="chevron">⌄</span>
         </div>
       </div>
       <div class="tablewrap"><table>
@@ -263,7 +271,47 @@ function render(payload){
       </table></div>
     </section>`;
   }).join("");
+  renderOverall(students);
   if(currentStudentName)renderStudentView();
+}
+
+function renderOverall(students){
+  const map=new Map();
+  students.forEach(s=>{
+    const key=(s.name||"").trim().toLowerCase();
+    if(!key)return;
+    if(!map.has(key))map.set(key,{name:s.name,progresses:[],percentages:[]});
+    const entry=map.get(key);
+    entry.progresses.push(Number(s.progress)||0);
+    if(s.percentage!==null&&s.percentage!==undefined)entry.percentages.push(Number(s.percentage));
+  });
+  const overallRows=[...map.values()].map(e=>({
+    name:e.name,
+    avgProgress:e.progresses.reduce((a,b)=>a+b,0)/e.progresses.length,
+    avgScore:e.percentages.length?e.percentages.reduce((a,b)=>a+b,0)/e.percentages.length:null
+  }));
+  const holder=document.getElementById("overallSection");
+  if(!overallRows.length){holder.innerHTML="";return;}
+  const overallAvg=overallRows.reduce((a,r)=>a+r.avgProgress,0)/overallRows.length;
+  const rows=overallRows.map(r=>`<tr>
+      <td class="name"><a class="student-link" data-name="${escAttr(r.name)}">${esc(r.name)}</a></td>
+      <td><div class="progress-cell"><div class="bar"><span style="width:${Math.max(0,Math.min(100,r.avgProgress))}%"></span></div><span class="pct">${fmtPct(r.avgProgress)}</span></div></td>
+      <td>${r.avgScore===null?'<span class="not-tested">Not tested yet</span>':`<strong>${r.avgScore.toFixed(2)}%</strong>`}</td>
+    </tr>`).join("");
+  holder.innerHTML=`<section class="subject${collapsedSections.has("__overall__")?" collapsed":""}" data-section="__overall__">
+    <div class="subject-head">
+      <div class="subject-name">Overall</div>
+      <div class="pills">
+        <span class="pill">${overallRows.length} ${overallRows.length===1?"student":"students"}</span>
+        <span class="pill">Avg ${fmtPct(overallAvg)}</span>
+        <span class="chevron">⌄</span>
+      </div>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Name</th><th>Avg Progress</th><th>Avg Score</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
 }
 
 async function load(){
@@ -280,9 +328,16 @@ async function load(){
 load();
 setInterval(load,POLL_MS);
 
-document.getElementById("groups").addEventListener("click",e=>{
+document.getElementById("gradeView").addEventListener("click",e=>{
   const link=e.target.closest(".student-link");
-  if(link)showStudentView(link.dataset.name);
+  if(link){showStudentView(link.dataset.name);return;}
+  const head=e.target.closest(".subject-head");
+  if(head){
+    const section=head.closest(".subject");
+    const key=section.dataset.section;
+    if(collapsedSections.has(key))collapsedSections.delete(key);else collapsedSections.add(key);
+    section.classList.toggle("collapsed");
+  }
 });
 
 function toggleMenu(){document.getElementById("menuDrawer").classList.toggle("open");document.getElementById("menuOverlay").classList.toggle("open");}
