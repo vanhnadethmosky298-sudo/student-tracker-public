@@ -144,14 +144,15 @@ function render(payload){
   document.getElementById("updatedAt").textContent=updatedAt?new Date(updatedAt).toLocaleString():"—";
 
   const total=students.length;
+  const uniqueStudents=new Set(students.map(s=>(s.name||"").trim().toLowerCase())).size;
   const avg=total?students.reduce((a,s)=>a+(Number(s.progress)||0),0)/total:0;
   const completed=students.filter(s=>Number(s.progress)>=100).length;
   const tested=students.filter(s=>s.percentage!==null&&s.percentage!==undefined).length;
-  document.getElementById("statTotal").textContent=total;
+  document.getElementById("statTotal").textContent=uniqueStudents;
   document.getElementById("statAvg").textContent=fmtPct(avg);
   document.getElementById("statCompleted").textContent=completed;
   document.getElementById("statTested").textContent=tested;
-  document.getElementById("studentCountMeta").textContent=total?`${total} student${total===1?"":"s"} tracked`:"";
+  document.getElementById("studentCountMeta").textContent=uniqueStudents?`${uniqueStudents} student${uniqueStudents===1?"":"s"} tracked`:"";
 
   const holder=document.getElementById("groups");
   if(!total){
