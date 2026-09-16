@@ -46,6 +46,26 @@ body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system
 .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent);border-radius:999px;padding:5px 12px 5px 10px}
 .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
 header{margin-bottom:32px}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+.menu-btn{background:var(--card);border:1px solid var(--line);border-radius:10px;width:40px;height:40px;min-width:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:0}
+.menu-btn span{display:block;width:18px;height:2px;background:var(--ink);border-radius:2px}
+.menu-btn:hover{border-color:var(--accent)}
+
+.menu-overlay{position:fixed;inset:0;background:rgba(15,23,20,.4);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:998}
+.menu-overlay.open{opacity:1;pointer-events:auto}
+
+.menu-drawer{position:fixed;top:0;right:0;height:100%;width:280px;max-width:82vw;background:var(--card);box-shadow:-12px 0 40px rgba(0,0,0,.18);transform:translateX(100%);transition:transform .28s ease;z-index:999;display:flex;flex-direction:column;padding:20px}
+.menu-drawer.open{transform:translateX(0)}
+.menu-drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.menu-drawer-title{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:18px}
+.menu-close{background:none;border:0;font-size:22px;line-height:1;cursor:pointer;color:var(--ink-soft);padding:4px 8px}
+.menu-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.menu-link{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;cursor:pointer}
+.menu-link:hover{background:var(--accent-soft)}
+.menu-link.active{background:var(--accent-soft);color:var(--accent-dark)}
+.menu-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;min-width:24px;border-radius:50%;background:var(--line);color:var(--ink-soft);font-size:12px;font-weight:700}
+.menu-link.active .menu-num{background:var(--accent);color:#fff}
 h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(32px,5vw,46px);line-height:1.05;letter-spacing:-.01em;margin:14px 0 8px;text-wrap:balance}
 .sub{color:var(--ink-soft);font-size:15.5px;max-width:60ch;line-height:1.55}
 .meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12.5px;color:var(--ink-soft)}
@@ -103,11 +123,26 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow" id="liveBadge">View only</span>
+    <div class="header-top">
+      <span class="eyebrow" id="liveBadge">View only</span>
+      <button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Open menu"><span></span><span></span><span></span></button>
+    </div>
     <h1>Grade Ledger</h1>
     <p class="sub">A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.</p>
     <div class="meta"><span>Last updated <strong id="updatedAt">—</strong></span><span id="studentCountMeta"></span></div>
   </header>
+
+  <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+  <nav class="menu-drawer" id="menuDrawer">
+    <div class="menu-drawer-head">
+      <span class="menu-drawer-title">Menu</span>
+      <button class="menu-close" onclick="closeMenu()" aria-label="Close menu">&times;</button>
+    </div>
+    <ul class="menu-list">
+      <li><a class="menu-link active" onclick="selectMenu(event,'grade')"><span class="menu-num">1</span>Grade</a></li>
+      <li><a class="menu-link" onclick="selectMenu(event,'courses')"><span class="menu-num">2</span>Courses</a></li>
+    </ul>
+  </nav>
 
   <div class="summary">
     <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Students</div></div>
@@ -202,6 +237,15 @@ async function load(){
 }
 load();
 setInterval(load,POLL_MS);
+
+function toggleMenu(){document.getElementById("menuDrawer").classList.toggle("open");document.getElementById("menuOverlay").classList.toggle("open");}
+function closeMenu(){document.getElementById("menuDrawer").classList.remove("open");document.getElementById("menuOverlay").classList.remove("open");}
+function selectMenu(e,key){
+  document.querySelectorAll(".menu-link").forEach(l=>l.classList.remove("active"));
+  e.currentTarget.classList.add("active");
+  closeMenu();
+  if(key==="courses"){alert("Courses is coming soon.");}
+}
 </script>
 </body>
 </html>
