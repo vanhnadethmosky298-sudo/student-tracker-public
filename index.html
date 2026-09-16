@@ -73,6 +73,21 @@ header{margin-bottom:32px}
 .course-link{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;color:var(--ink);text-decoration:none;font-weight:600;font-size:14.5px}
 .course-link:hover{background:var(--accent-soft);color:var(--accent-dark)}
 .course-arrow{color:var(--ink-soft);font-size:16px;flex:none}
+
+.student-link{color:var(--ink);text-decoration:none;cursor:pointer}
+.student-link:hover{color:var(--accent-dark);text-decoration:underline}
+
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink);cursor:pointer;margin-bottom:18px}
+.back-btn:hover{border-color:var(--accent);color:var(--accent-dark)}
+
+.chart-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
+.chart-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;margin-bottom:16px}
+.chart-bars{display:flex;align-items:flex-end;gap:20px;height:180px;padding:0 4px;overflow-x:auto}
+.chart-bar-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:60px;height:100%}
+.chart-bar-track{width:30px;flex:1;background:var(--line);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
+.chart-bar-fill{width:100%;background:var(--accent);border-radius:6px;transition:height .3s ease}
+.chart-bar-pct{font-size:12px;font-weight:700;color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums}
+.chart-bar-label{font-size:11px;color:var(--ink-soft);margin-top:2px;text-align:center;max-width:74px;word-break:break-word;line-height:1.3}
 h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:clamp(32px,5vw,46px);line-height:1.05;letter-spacing:-.01em;margin:14px 0 8px;text-wrap:balance}
 .sub{color:var(--ink-soft);font-size:15.5px;max-width:60ch;line-height:1.55}
 .meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12.5px;color:var(--ink-soft)}
@@ -146,8 +161,8 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
       <button class="menu-close" onclick="closeMenu()" aria-label="Close menu">&times;</button>
     </div>
     <ul class="menu-list">
-      <li><a class="menu-link active" onclick="selectMenu(event,'grade')"><span class="menu-num">1</span>Grade</a></li>
-      <li><a class="menu-link" onclick="selectMenu(event,'courses')"><span class="menu-num">2</span>Courses</a></li>
+      <li><a class="menu-link active" data-menu="grade" onclick="selectMenu(event,'grade')"><span class="menu-num">1</span>Grade</a></li>
+      <li><a class="menu-link" data-menu="courses" onclick="selectMenu(event,'courses')"><span class="menu-num">2</span>Courses</a></li>
     </ul>
   </nav>
 
@@ -169,14 +184,23 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
     </section>
   </div>
 
+  <div id="studentView" style="display:none">
+    <button class="back-btn" onclick="backToGrade()">&larr; Back to Grade</button>
+    <div id="studentDetail"></div>
+  </div>
+
   <footer><span>Student Progress &amp; Grade Tracker</span><span id="syncNote">Refreshes automatically every 20s</span></footer>
 </div>
 
 <script>
 const POLL_MS = 20000;
 
+let LAST_STUDENTS=[];
+let currentStudentName=null;
+
 function fmtPct(n){const v=Number(n)||0;return (Math.round(v*10)/10).toString().replace(/\.0$/,'')+"%";}
 function esc(s){const d=document.createElement("div");d.textContent=String(s??"");return d.innerHTML;}
+function escAttr(s){return esc(s).replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 function statusHtml(p){if(p>=100)return '<span class="status completed">Completed</span>';if(p>0)return '<span class="status in-progress">In Progress</span>';return '<span class="status not-started">Not Started</span>';}
 function resultHtml(s){
   if(s.percentage===null||s.percentage===undefined)return '<span class="not-tested">Not tested yet</span>';
@@ -191,6 +215,7 @@ function groupBySubject(list){
 
 function render(payload){
   const students=Array.isArray(payload)?payload:(payload.students||[]);
+  LAST_STUDENTS=students;
   const updatedAt=Array.isArray(payload)?null:payload.updatedAt;
   document.getElementById("updatedAt").textContent=updatedAt?new Date(updatedAt).toLocaleString():"—";
 
@@ -216,7 +241,7 @@ function render(payload){
     const gCompleted=g.items.filter(s=>Number(s.progress)>=100).length;
     const gTested=g.items.filter(s=>s.percentage!==null&&s.percentage!==undefined).length;
     const rows=g.items.map(s=>`<tr>
-        <td class="name">${esc(s.name)}</td>
+        <td class="name"><a class="student-link" data-name="${escAttr(s.name)}">${esc(s.name)}</a></td>
         <td><div class="progress-cell"><div class="bar"><span style="width:${Math.max(0,Math.min(100,Number(s.progress)||0))}%"></span></div><span class="pct">${fmtPct(s.progress)}</span></div></td>
         <td>${statusHtml(Number(s.progress)||0)}</td>
         <td class="score">${s.testScore===null||s.testScore===undefined?"—":`${s.testScore}/${s.maximumScore}`}</td>
@@ -238,6 +263,7 @@ function render(payload){
       </table></div>
     </section>`;
   }).join("");
+  if(currentStudentName)renderStudentView();
 }
 
 async function load(){
@@ -254,6 +280,11 @@ async function load(){
 load();
 setInterval(load,POLL_MS);
 
+document.getElementById("groups").addEventListener("click",e=>{
+  const link=e.target.closest(".student-link");
+  if(link)showStudentView(link.dataset.name);
+});
+
 function toggleMenu(){document.getElementById("menuDrawer").classList.toggle("open");document.getElementById("menuOverlay").classList.toggle("open");}
 function closeMenu(){document.getElementById("menuDrawer").classList.remove("open");document.getElementById("menuOverlay").classList.remove("open");}
 function selectMenu(e,key){
@@ -261,6 +292,64 @@ function selectMenu(e,key){
   e.currentTarget.classList.add("active");
   closeMenu();
   if(key==="courses"){showCoursesView();}else{showGradeView();}
+}
+
+function renderStudentView(){
+  const rows=LAST_STUDENTS.filter(s=>(s.name||"").trim().toLowerCase()===(currentStudentName||"").trim().toLowerCase());
+  const container=document.getElementById("studentDetail");
+  if(!rows.length){
+    container.innerHTML='<div class="empty"><div class="glyph">Δ</div><p>No records found for this student.</p></div>';
+    return;
+  }
+  const chartBars=rows.map(s=>{
+    const pct=Math.max(0,Math.min(100,Number(s.progress)||0));
+    return `<div class="chart-bar-wrap">
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="height:${pct}%"></div></div>
+      <div class="chart-bar-pct">${fmtPct(s.progress)}</div>
+      <div class="chart-bar-label">${esc(s.subject||"Other")}</div>
+    </div>`;
+  }).join("");
+  const tableRows=rows.map(s=>`<tr>
+      <td class="name">${esc(s.subject||"Other")}</td>
+      <td><div class="progress-cell"><div class="bar"><span style="width:${Math.max(0,Math.min(100,Number(s.progress)||0))}%"></span></div><span class="pct">${fmtPct(s.progress)}</span></div></td>
+      <td>${statusHtml(Number(s.progress)||0)}</td>
+      <td class="score">${s.testScore===null||s.testScore===undefined?"—":`${s.testScore}/${s.maximumScore}`}</td>
+      <td>${resultHtml(s)}</td>
+    </tr>`).join("");
+  container.innerHTML=`
+    <div class="chart-card">
+      <div class="chart-title">Progress by course</div>
+      <div class="chart-bars">${chartBars}</div>
+    </div>
+    <section class="subject">
+      <div class="subject-head"><div class="subject-name">Course Records</div></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Course</th><th>Progress</th><th>Status</th><th>Score</th><th>Result</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table></div>
+    </section>`;
+}
+
+function showStudentView(name){
+  currentStudentName=name;
+  closeMenu();
+  document.querySelectorAll(".menu-link").forEach(l=>l.classList.remove("active"));
+  document.getElementById("pageTitle").textContent=name;
+  document.getElementById("pageSub").textContent="Individual progress and test results across all subjects.";
+  document.getElementById("metaRow").style.display="none";
+  document.getElementById("gradeView").style.display="none";
+  document.getElementById("coursesView").style.display="none";
+  document.getElementById("studentView").style.display="";
+  renderStudentView();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+function backToGrade(){
+  currentStudentName=null;
+  showGradeView();
+  const g=document.querySelector('.menu-link[data-menu="grade"]');
+  if(g)g.classList.add("active");
+  window.scrollTo({top:0,behavior:"instant"});
 }
 
 const COURSES=[
@@ -290,6 +379,7 @@ function showGradeView(){
   document.getElementById("metaRow").style.display="";
   document.getElementById("gradeView").style.display="";
   document.getElementById("coursesView").style.display="none";
+  document.getElementById("studentView").style.display="none";
 }
 function showCoursesView(){
   document.getElementById("pageTitle").textContent="Courses";
@@ -297,6 +387,7 @@ function showCoursesView(){
   document.getElementById("metaRow").style.display="none";
   document.getElementById("gradeView").style.display="none";
   document.getElementById("coursesView").style.display="";
+  document.getElementById("studentView").style.display="none";
 }
 renderCourses();
 </script>
