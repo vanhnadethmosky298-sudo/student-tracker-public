@@ -203,6 +203,7 @@ const POLL_MS = 20000;
 let LAST_STUDENTS=[];
 let currentStudentName=null;
 let collapsedSections=new Set();
+let collapseInitialized=false;
 
 function fmtPct(n){const v=Number(n)||0;return (Math.round(v*10)/10).toString().replace(/\.0$/,'')+"%";}
 function esc(s){const d=document.createElement("div");d.textContent=String(s??"");return d.innerHTML;}
@@ -243,6 +244,10 @@ function render(payload){
     return;
   }
   const groups=groupBySubject(students);
+  if(!collapseInitialized){
+    groups.forEach(g=>collapsedSections.add(g.subject));
+    collapseInitialized=true;
+  }
   holder.innerHTML=groups.map(g=>{
     const gAvg=g.items.reduce((a,s)=>a+(Number(s.progress)||0),0)/g.items.length;
     const gCompleted=g.items.filter(s=>Number(s.progress)>=100).length;
