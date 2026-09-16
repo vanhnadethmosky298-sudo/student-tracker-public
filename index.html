@@ -300,15 +300,18 @@ function renderOverall(students){
   const overallRows=[...map.values()].map(e=>({
     name:e.name,
     avgProgress:e.progresses.reduce((a,b)=>a+b,0)/e.progresses.length,
-    avgScore:e.percentages.length?e.percentages.reduce((a,b)=>a+b,0)/e.percentages.length:null
+    avgScore:e.percentages.length?e.percentages.reduce((a,b)=>a+b,0)/e.percentages.length:null,
+    testsCount:e.percentages.length
   }));
   const holder=document.getElementById("overallSection");
   if(!overallRows.length){holder.innerHTML="";return;}
   const overallAvg=overallRows.reduce((a,r)=>a+r.avgProgress,0)/overallRows.length;
+  const testedStudents=overallRows.filter(r=>r.testsCount>0).length;
   const rows=overallRows.map(r=>`<tr>
       <td class="name"><a class="student-link" data-name="${escAttr(r.name)}">${esc(r.name)}</a></td>
       <td><div class="progress-cell"><div class="bar"><span style="width:${Math.max(0,Math.min(100,r.avgProgress))}%"></span></div><span class="pct">${fmtPct(r.avgProgress)}</span></div></td>
       <td>${r.avgScore===null?'<span class="not-tested">Not tested yet</span>':`<strong>${r.avgScore.toFixed(2)}%</strong>`}</td>
+      <td>${r.testsCount}</td>
     </tr>`).join("");
   holder.innerHTML=`<section class="subject${collapsedSections.has("__overall__")?" collapsed":""}" data-section="__overall__">
     <div class="subject-head">
@@ -316,11 +319,12 @@ function renderOverall(students){
       <div class="pills">
         <span class="pill">${overallRows.length} ${overallRows.length===1?"student":"students"}</span>
         <span class="pill">Avg ${fmtPct(overallAvg)}</span>
+        <span class="pill">${testedStudents} tested</span>
         <span class="chevron">⌄</span>
       </div>
     </div>
     <div class="tablewrap"><table>
-      <thead><tr><th>Name</th><th>Avg Progress</th><th>Avg Score</th></tr></thead>
+      <thead><tr><th>Name</th><th>Avg Progress</th><th>Avg Score</th><th>Tests</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </section>`;
