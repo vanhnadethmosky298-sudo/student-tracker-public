@@ -85,6 +85,11 @@ header{margin-bottom:32px}
 .quiz-link-title{font-weight:700;font-size:14.5px}
 .quiz-link-meta{font-size:12.5px;color:var(--ink-soft)}
 .quiz-note{padding:16px 20px;font-size:13px;color:var(--ink-soft);border-bottom:1px solid var(--line);background:var(--paper)}
+.quiz-submit-card{border:1px solid var(--line);border-radius:14px;background:var(--accent-soft);padding:20px;margin-bottom:20px;display:flex;flex-direction:column;gap:10px}
+.quiz-submit-title{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:18px;color:var(--accent-dark)}
+.quiz-submit-desc{font-size:13.5px;color:var(--ink-soft);line-height:1.6}
+.quiz-submit-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;font-size:14.5px;border-radius:10px;padding:12px 20px;border:none;cursor:pointer;width:fit-content}
+.quiz-submit-btn:hover{background:var(--accent-dark)}
 .quiz-instructions{margin:0;padding-left:20px;color:var(--ink-soft);font-size:14.5px;line-height:1.75}
 .quiz-instructions li{margin-bottom:6px}
 .quiz-block{padding:20px}
@@ -235,7 +240,6 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 
   <footer><span>Student Progress &amp; Grade Tracker</span><span id="syncNote">Refreshes automatically every 20s</span></footer>
 </div>
-
 <script>
 const POLL_MS = 20000;
 
@@ -361,7 +365,6 @@ function renderOverall(students){
     </table></div>
   </section>`;
 }
-
 async function load(){
   try{
     const res=await fetch("./data.json?t="+Date.now(),{cache:"no-store"});
@@ -447,7 +450,6 @@ function buildLineChart(rows){
     ${xLabels}
   </svg>`;
 }
-
 function renderStudentView(){
   const rows=LAST_STUDENTS.filter(s=>(s.name||"").trim().toLowerCase()===(currentStudentName||"").trim().toLowerCase());
   const container=document.getElementById("studentDetail");
@@ -547,12 +549,12 @@ function showCoursesView(){
   document.getElementById("pageSub").textContent="Reference courses and training materials. Tap a course to open its source in a new tab.";
   document.getElementById("coursesView").style.display="";
 }
-
 const QUIZZES=[
   {
     id:"qgis-fundamentals",
     title:"QGIS Fundamentals Quiz",
     meta:"11 questions · 20 points · 60 minutes",
+    formUrl:"https://docs.google.com/forms/d/e/1FAIpQLSf52VVcYYJJIcJ3CbE0iwJbnsUm1DkZoCC3yfz5u88gwloaDg/viewform",
     basedOn:"Based on Introduction to QGIS (spatialthoughts.com).",
     instructions:[
       "This quiz checks whether a trainee can use the core QGIS workflow: importing data, symbolizing and labeling it, building a print layout, joining tables, georeferencing, digitizing, and running basic geoprocessing.",
@@ -605,7 +607,6 @@ function renderQuizList(){
     `<li><a class="quiz-link" data-quiz="${escAttr(qz.id)}"><span class="quiz-link-title">${esc(qz.title)}</span><span class="quiz-link-meta">${esc(qz.meta)}</span></a></li>`
   ).join("");
 }
-
 function buildQuizDetailHtml(qz){
   const instructionItems=qz.instructions.map(t=>`<li>${esc(t)}</li>`).join("");
   const questions=qz.partA.map((item,i)=>{
@@ -618,7 +619,14 @@ function buildQuizDetailHtml(qz){
   }).join("");
   const steps=qz.partB.steps.map(s=>`<li>${esc(s)}</li>`).join("");
   const rubricRows=qz.partB.rubric.map(r=>`<tr${r.total?' style="font-weight:700"':''}><td>${esc(r.c)}</td><td>${r.p}</td></tr>`).join("");
+  const submitCta=qz.formUrl?`
+    <div class="quiz-submit-card">
+      <div class="quiz-submit-title">Ready to answer?</div>
+      <div class="quiz-submit-desc">Part A (multiple choice) is auto-graded on submit. For Part B, upload your .qgz project file and exported PDF map on the same form — your instructor grades that part manually against the rubric below. Sign-in with Google is required for the file upload.</div>
+      <a class="quiz-submit-btn" href="${escAttr(qz.formUrl)}" target="_blank" rel="noopener">Open the Quiz Form ↗</a>
+    </div>`:"";
   return `
+    ${submitCta}
     <section class="subject" style="margin-bottom:20px">
       <div class="subject-head"><div class="subject-name">Instructions</div></div>
       <div style="padding:20px">
