@@ -80,6 +80,24 @@ header{margin-bottom:32px}
 .back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink);cursor:pointer;margin-bottom:18px}
 .back-btn:hover{border-color:var(--accent);color:var(--accent-dark)}
 
+.quiz-link{display:flex;flex-direction:column;gap:3px;padding:16px 20px;color:var(--ink);text-decoration:none}
+.quiz-link:hover{background:var(--accent-soft)}
+.quiz-link-title{font-weight:700;font-size:14.5px}
+.quiz-link-meta{font-size:12.5px;color:var(--ink-soft)}
+.quiz-note{padding:16px 20px;font-size:13px;color:var(--ink-soft);border-bottom:1px solid var(--line);background:var(--paper)}
+.quiz-instructions{margin:0;padding-left:20px;color:var(--ink-soft);font-size:14.5px;line-height:1.75}
+.quiz-instructions li{margin-bottom:6px}
+.quiz-block{padding:20px}
+.quiz-block+.quiz-block{border-top:1px solid var(--line)}
+.quiz-q{font-weight:700;margin-bottom:10px;line-height:1.5}
+.quiz-q-num{color:var(--accent-dark);margin-right:6px}
+.quiz-options{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.quiz-option{display:flex;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:var(--ink-soft)}
+.quiz-option-letter{font-weight:700;color:var(--accent-dark);min-width:16px}
+.quiz-partb-title{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:17px;color:var(--accent-dark);margin-bottom:10px}
+.quiz-steps{margin:12px 0 0;padding-left:20px;color:var(--ink-soft);font-size:14.5px;line-height:1.75}
+.quiz-steps li{margin-bottom:4px}
+
 .chart-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
 .chart-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;margin-bottom:16px}
 .line-chart{width:100%;height:auto;display:block;overflow:visible}
@@ -173,6 +191,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
     <ul class="menu-list">
       <li><a class="menu-link active" data-menu="grade" onclick="selectMenu(event,'grade')"><span class="menu-num">1</span>Grade</a></li>
       <li><a class="menu-link" data-menu="courses" onclick="selectMenu(event,'courses')"><span class="menu-num">2</span>Courses</a></li>
+      <li><a class="menu-link" data-menu="quiz" onclick="selectMenu(event,'quiz')"><span class="menu-num">3</span>Quiz</a></li>
     </ul>
   </nav>
 
@@ -199,6 +218,19 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
   <div id="studentView" style="display:none">
     <button class="back-btn" onclick="backToGrade()">&larr; Back to Grade</button>
     <div id="studentDetail"></div>
+  </div>
+
+  <div id="quizView" style="display:none">
+    <section class="subject">
+      <div class="subject-head"><div class="subject-name">Quizzes</div></div>
+      <div class="quiz-note">More quizzes will be added here over time.</div>
+      <ul class="course-list" id="quizList"></ul>
+    </section>
+  </div>
+
+  <div id="quizDetailView" style="display:none">
+    <button class="back-btn" onclick="backToQuizList()">&larr; Back to Quizzes</button>
+    <div id="quizDetail"></div>
   </div>
 
   <footer><span>Student Progress &amp; Grade Tracker</span><span id="syncNote">Refreshes automatically every 20s</span></footer>
@@ -362,7 +394,9 @@ function selectMenu(e,key){
   document.querySelectorAll(".menu-link").forEach(l=>l.classList.remove("active"));
   e.currentTarget.classList.add("active");
   closeMenu();
-  if(key==="courses"){showCoursesView();}else{showGradeView();}
+  if(key==="courses"){showCoursesView();}
+  else if(key==="quiz"){showQuizView();}
+  else{showGradeView();}
 }
 
 function buildLineChart(rows){
@@ -453,12 +487,10 @@ function renderStudentView(){
 function showStudentView(name){
   currentStudentName=name;
   closeMenu();
+  hideAllViews();
   document.querySelectorAll(".menu-link").forEach(l=>l.classList.remove("active"));
   document.getElementById("pageTitle").textContent=name;
   document.getElementById("pageSub").textContent="Individual progress and test results across all subjects.";
-  document.getElementById("metaRow").style.display="none";
-  document.getElementById("gradeView").style.display="none";
-  document.getElementById("coursesView").style.display="none";
   document.getElementById("studentView").style.display="";
   renderStudentView();
   window.scrollTo({top:0,behavior:"instant"});
@@ -493,24 +525,162 @@ const COURSES=[
 function renderCourses(){
   document.getElementById("courseList").innerHTML=COURSES.map(c=>`<li class="course-item"><a class="course-link" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}<span class="course-arrow">↗</span></a></li>`).join("");
 }
-function showGradeView(){
-  document.getElementById("pageTitle").textContent="Grade Ledger";
-  document.getElementById("pageSub").textContent="A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.";
-  document.getElementById("pageTitleMeta").style.display="none";
-  document.getElementById("metaRow").style.display="";
-  document.getElementById("gradeView").style.display="";
+function hideAllViews(){
+  document.getElementById("gradeView").style.display="none";
   document.getElementById("coursesView").style.display="none";
   document.getElementById("studentView").style.display="none";
-}
-function showCoursesView(){
-  document.getElementById("pageTitle").textContent="Courses";
-  document.getElementById("pageSub").textContent="Reference courses and training materials. Tap a course to open its source in a new tab.";
+  document.getElementById("quizView").style.display="none";
+  document.getElementById("quizDetailView").style.display="none";
   document.getElementById("pageTitleMeta").style.display="none";
   document.getElementById("metaRow").style.display="none";
-  document.getElementById("gradeView").style.display="none";
-  document.getElementById("coursesView").style.display="";
-  document.getElementById("studentView").style.display="none";
 }
+function showGradeView(){
+  hideAllViews();
+  document.getElementById("pageTitle").textContent="Grade Ledger";
+  document.getElementById("pageSub").textContent="A public, read-only view of learning progress and test results, grouped by subject. Scores are recorded by the tracker's owner — this page cannot be edited.";
+  document.getElementById("metaRow").style.display="";
+  document.getElementById("gradeView").style.display="";
+}
+function showCoursesView(){
+  hideAllViews();
+  document.getElementById("pageTitle").textContent="Courses";
+  document.getElementById("pageSub").textContent="Reference courses and training materials. Tap a course to open its source in a new tab.";
+  document.getElementById("coursesView").style.display="";
+}
+
+const QUIZZES=[
+  {
+    id:"qgis-fundamentals",
+    title:"QGIS Fundamentals Quiz",
+    meta:"11 questions · 20 points · 60 minutes",
+    basedOn:"Based on Introduction to QGIS (spatialthoughts.com).",
+    instructions:[
+      "This quiz checks whether a trainee can use the core QGIS workflow: importing data, symbolizing and labeling it, building a print layout, joining tables, georeferencing, digitizing, and running basic geoprocessing.",
+      "Format: 10 multiple-choice questions (1 point each) + 1 practical exercise (10 points) = 20 points total.",
+      "Time: 20 minutes for Part A, 40 minutes for Part B.",
+      "Materials needed: QGIS 3.x or 4.x installed, and the course's sample data package (specifically the NYC neighborhoods dataset used in Part B).",
+      "Passing score: 14/20 (70%), unless your center sets a different threshold.",
+      "For Part B, submit the saved QGIS project file (.qgz) and the exported PDF map."
+    ],
+    partA:[
+      {q:"Which panel in QGIS is used to import vector, raster, and delimited-text datasets into a project?",options:["Layer Styling Panel","Data Source Manager","Processing Toolbox","Attribute Table"]},
+      {q:"You want to show earthquake magnitude by drawing each point as a circle whose size grows with the magnitude value. Which symbology approach should you use?",options:["Categorized symbology","Graduated symbology on fill color","Proportional (data-defined) marker size","A single fixed-size Simple Marker"]},
+      {q:"Which QGIS label expression correctly joins a city name field and a population field with a space between them?",options:[`"city_name" + " " + "population"`,`"city_name" || ' ' || "population"`,"CONCAT(city_name, population)","city_name & population"]},
+      {q:"Which of the following is normally NOT part of a finished QGIS Print Layout?",options:["Legend","North arrow","Full attribute table of every feature","Scale bar"]},
+      {q:"EPSG:4326 refers to which coordinate reference system?",options:["Web Mercator","WGS 84 (geographic, latitude/longitude)","Equal Earth projection","UTM Zone 43N"]},
+      {q:"What is the main purpose of a Table Join in QGIS?",options:["Merge the geometries of two vector layers into one","Attach attribute data from a non-spatial table (e.g., a CSV) to a vector layer using a shared field","Reproject a layer into a new CRS","Create a buffer around selected features"]},
+      {q:"Before mapping population by neighborhood as a choropleth, why should raw population counts usually be normalized (e.g., converted to population density)?",options:["Normalization is not necessary for choropleth maps","Raw counts can mislead, since larger areas naturally have higher totals regardless of how crowded they are","QGIS cannot classify raw counts","Normalizing changes the polygon geometries"]},
+      {q:"In the QGIS Georeferencer, what do you collect to align a scanned historical map with real-world coordinates?",options:["Vertices","Ground Control Points (GCPs)","Snapping points","Buffer zones"]},
+      {q:"When digitizing a new polygon, which setting makes sure new vertices connect exactly to an existing feature's edge, with no gaps or overlaps?",options:["Snapping","Georeferencing","Zonal statistics","Field Calculator"]},
+      {q:"Which Processing Toolbox algorithm would you use to find the average population within each buffer zone around metro stations, using a population raster?",options:["Buffer","Reproject Layer","Zonal Statistics","Extract by Attribute"]}
+    ],
+    partB:{
+      title:"Part B — Practical Exercise: Build a Population Density Choropleth Map (10 points)",
+      scenario:"Scenario: using the NYC dataset from the course's data package (nynta2010.shp — Neighborhood Tabulation Area polygons — and the Population by NTA CSV table), produce a finished, presentation-ready map.",
+      steps:[
+        "Import the NTA polygon layer and the population CSV table into QGIS.",
+        "Join the population table to the NTA polygons using the shared NTA code field.",
+        "Use the Field Calculator to compute population density (population ÷ area).",
+        "Apply Graduated symbology to the density field: 6 classes, Quantile classification, and a sequential color ramp (e.g., YlOrBr).",
+        "Label each neighborhood with its name, formatted so it stays readable at map scale.",
+        "Build a Print Layout containing: the map, a title, a legend, a north arrow, a scale bar, and a data source attribution.",
+        "Export the final layout as a PDF."
+      ],
+      deliverables:"Deliverables: the saved QGIS project file (.qgz) and the exported PDF map.",
+      rubric:[
+        {c:"Data imported and joined correctly",p:2},
+        {c:"Population density calculated correctly",p:2},
+        {c:"Graduated symbology: correct classification and color ramp",p:2},
+        {c:"Labels applied and legible",p:1},
+        {c:"Print layout complete (title, legend, north arrow, scale bar, source)",p:2},
+        {c:"PDF exported and readable",p:1},
+        {c:"Total",p:10,total:true}
+      ]
+    }
+  }
+];
+
+function renderQuizList(){
+  document.getElementById("quizList").innerHTML=QUIZZES.map(qz=>
+    `<li><a class="quiz-link" data-quiz="${escAttr(qz.id)}"><span class="quiz-link-title">${esc(qz.title)}</span><span class="quiz-link-meta">${esc(qz.meta)}</span></a></li>`
+  ).join("");
+}
+
+function buildQuizDetailHtml(qz){
+  const instructionItems=qz.instructions.map(t=>`<li>${esc(t)}</li>`).join("");
+  const questions=qz.partA.map((item,i)=>{
+    const letters=["A","B","C","D"];
+    const opts=item.options.map((o,oi)=>`<li class="quiz-option"><span class="quiz-option-letter">${letters[oi]}.</span><span>${esc(o)}</span></li>`).join("");
+    return `<div class="quiz-block">
+      <div class="quiz-q"><span class="quiz-q-num">${i+1}.</span>${esc(item.q)}</div>
+      <ul class="quiz-options">${opts}</ul>
+    </div>`;
+  }).join("");
+  const steps=qz.partB.steps.map(s=>`<li>${esc(s)}</li>`).join("");
+  const rubricRows=qz.partB.rubric.map(r=>`<tr${r.total?' style="font-weight:700"':''}><td>${esc(r.c)}</td><td>${r.p}</td></tr>`).join("");
+  return `
+    <section class="subject" style="margin-bottom:20px">
+      <div class="subject-head"><div class="subject-name">Instructions</div></div>
+      <div style="padding:20px">
+        <p style="color:var(--ink-soft);font-size:14.5px;margin-bottom:12px">${esc(qz.basedOn)}</p>
+        <ol class="quiz-instructions">${instructionItems}</ol>
+      </div>
+    </section>
+    <section class="subject" style="margin-bottom:20px">
+      <div class="subject-head"><div class="subject-name">Part A — Multiple Choice</div><div class="pills"><span class="pill">10 questions</span><span class="pill">1 point each</span></div></div>
+      ${questions}
+    </section>
+    <section class="subject" style="margin-bottom:20px">
+      <div class="subject-head"><div class="subject-name">Part B — Practical Exercise</div><div class="pills"><span class="pill">10 points</span></div></div>
+      <div style="padding:20px">
+        <div class="quiz-partb-title">${esc(qz.partB.title)}</div>
+        <p style="color:var(--ink-soft);font-size:14.5px;line-height:1.6">${esc(qz.partB.scenario)}</p>
+        <ol class="quiz-steps">${steps}</ol>
+        <p style="color:var(--ink-soft);font-size:14.5px;margin-top:12px">${esc(qz.partB.deliverables)}</p>
+      </div>
+    </section>
+    <section class="subject">
+      <div class="subject-head"><div class="subject-name">Grading Rubric</div></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Criterion</th><th>Points</th></tr></thead>
+        <tbody>${rubricRows}</tbody>
+      </table></div>
+    </section>`;
+}
+
+function showQuizDetail(id){
+  const qz=QUIZZES.find(q=>q.id===id);
+  if(!qz)return;
+  hideAllViews();
+  document.getElementById("pageTitle").textContent=qz.title;
+  document.getElementById("pageSub").textContent=qz.basedOn;
+  document.getElementById("pageTitleMeta").innerHTML=`<span class="title-meta-item">${esc(qz.meta)}</span>`;
+  document.getElementById("pageTitleMeta").style.display="flex";
+  document.getElementById("quizDetail").innerHTML=buildQuizDetailHtml(qz);
+  document.getElementById("quizDetailView").style.display="";
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+function backToQuizList(){
+  showQuizView();
+}
+
+function showQuizView(){
+  hideAllViews();
+  document.getElementById("pageTitle").textContent="Quiz";
+  document.getElementById("pageSub").textContent="Assessments tied to the courses above. Tap a quiz to view its questions.";
+  document.getElementById("quizView").style.display="";
+  const q=document.querySelector('.menu-link[data-menu="quiz"]');
+  document.querySelectorAll(".menu-link").forEach(l=>l.classList.remove("active"));
+  if(q)q.classList.add("active");
+}
+
+document.getElementById("quizList").addEventListener("click",e=>{
+  const link=e.target.closest(".quiz-link");
+  if(link)showQuizDetail(link.dataset.quiz);
+});
+
+renderQuizList();
 renderCourses();
 </script>
 </body>
