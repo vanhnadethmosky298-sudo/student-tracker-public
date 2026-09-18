@@ -560,7 +560,7 @@ const QUIZZES=[
       "This quiz checks whether a trainee can use the core QGIS workflow: importing data, symbolizing and labeling it, building a print layout, joining tables, georeferencing, digitizing, and running basic geoprocessing.",
       "Format: 10 multiple-choice questions (1 point each) + 1 practical exercise (10 points) = 20 points total.",
       "Time: 20 minutes for Part A, 40 minutes for Part B.",
-      "Materials needed: QGIS 3.x or 4.x installed, and the course's sample data package (specifically the NYC neighborhoods dataset used in Part B).",
+      "Materials needed: QGIS 3.x or 4.x installed, and the Phongsaly practical data package (district boundaries + population CSV) linked in Part B below.",
       "Passing score: 14/20 (70%), unless your center sets a different threshold.",
       "For Part B, submit the saved QGIS project file (.qgz) and the exported PDF map."
     ],
@@ -577,25 +577,27 @@ const QUIZZES=[
       {q:"Which Processing Toolbox algorithm would you use to find the average population within each buffer zone around metro stations, using a population raster?",options:["Buffer","Reproject Layer","Zonal Statistics","Extract by Attribute"]}
     ],
     partB:{
-      title:"Part B — Practical Exercise: Build a Population Density Choropleth Map (10 points)",
-      scenario:"Scenario: using the NYC dataset from the course's data package (nynta2010.shp — Neighborhood Tabulation Area polygons — and the Population by NTA CSV table), produce a finished, presentation-ready map.",
+      title:"Part B — Practical Exercise: Population Density Map of Phongsaly, Laos (10 points)",
+      scenario:"Scenario: build a population density choropleth map of Phongsaly Province, Laos, styled like the example map design provided by your instructor (title, description text, legend, north arrow, scale bar, data source, and a \"Made with QGIS\" credit).",
+      dataUrl:"https://drive.google.com/file/d/16z_TjPyxSAUObuK8uTpXM7L1aIekYUF7/view?usp=sharing",
       steps:[
-        "Import the NTA polygon layer and the population CSV table into QGIS.",
-        "Join the population table to the NTA polygons using the shared NTA code field.",
+        "Import the Phongsaly district boundary layer and the Population by District table.",
+        "Join the population table to the boundaries using the shared district field.",
         "Use the Field Calculator to compute population density (population ÷ area).",
-        "Apply Graduated symbology to the density field: 6 classes, Quantile classification, and a sequential color ramp (e.g., YlOrBr).",
-        "Label each neighborhood with its name, formatted so it stays readable at map scale.",
-        "Build a Print Layout containing: the map, a title, a legend, a north arrow, a scale bar, and a data source attribution.",
-        "Export the final layout as a PDF."
+        "Apply Graduated symbology: 6 classes, Quantile classification, sequential color ramp.",
+        "Build a Print Layout with a title, descriptive text, legend, north arrow, scale bar, and data source.",
+        "Export the layout as a PDF."
       ],
       deliverables:"Deliverables: the saved QGIS project file (.qgz) and the exported PDF map.",
       rubric:[
-        {c:"Data imported and joined correctly",p:2},
-        {c:"Population density calculated correctly",p:2},
-        {c:"Graduated symbology: correct classification and color ramp",p:2},
-        {c:"Labels applied and legible",p:1},
-        {c:"Print layout complete (title, legend, north arrow, scale bar, source)",p:2},
-        {c:"PDF exported and readable",p:1},
+        {c:"Data imported, joined, and density calculated correctly",p:2},
+        {c:"Choropleth symbology (graduated, 6 classes, appropriate color ramp)",p:2},
+        {c:"Legend matches map colors/classes, labeled \"People / Sq Km\"",p:1},
+        {c:"Title and descriptive text present and accurate",p:1},
+        {c:"North arrow present and well placed",p:1},
+        {c:"Scale bar present, correct units (km)",p:1},
+        {c:"Data source / attribution included",p:1},
+        {c:"Exported as PDF, correct page size, readable",p:1},
         {c:"Total",p:10,total:true}
       ]
     }
@@ -643,6 +645,7 @@ function buildQuizDetailHtml(qz){
       <div style="padding:20px">
         <div class="quiz-partb-title">${esc(qz.partB.title)}</div>
         <p style="color:var(--ink-soft);font-size:14.5px;line-height:1.6">${esc(qz.partB.scenario)}</p>
+        ${qz.partB.dataUrl?`<p style="font-size:13.5px;margin-top:10px"><a href="${escAttr(qz.partB.dataUrl)}" target="_blank" rel="noopener" style="color:var(--accent-dark);font-weight:600;text-decoration:none">Download the data package &amp; full requirements ↗</a></p>`:""}
         <ol class="quiz-steps">${steps}</ol>
         <p style="color:var(--ink-soft);font-size:14.5px;margin-top:12px">${esc(qz.partB.deliverables)}</p>
       </div>
