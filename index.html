@@ -110,6 +110,8 @@ header{margin-bottom:32px}
 .chart-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
 .chart-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;margin-bottom:16px}
 .line-chart{width:100%;height:auto;display:block;overflow:visible}
+.chart-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.chart-scroll .line-chart{overflow:visible}
 .chart-grad-start{stop-color:var(--accent);stop-opacity:.32}
 .chart-grad-end{stop-color:var(--accent);stop-opacity:0}
 .chart-grid{stroke:var(--line);stroke-width:1}
@@ -244,6 +246,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:v
 
   <footer><span>Student Progress &amp; Grade Tracker</span><span id="syncNote">Refreshes automatically every 20s</span></footer>
 </div>
+
 <script>
 const POLL_MS = 20000;
 
@@ -375,6 +378,7 @@ function renderOverall(students){
     </table></div>
   </section>`;
 }
+
 async function load(){
   try{
     const res=await fetch("./data.json?t="+Date.now(),{cache:"no-store"});
@@ -417,10 +421,12 @@ function selectMenu(e,key){
 }
 
 function buildLineChart(rows){
-  const w=640,h=220;
-  const padL=36,padR=36,padTop=40,padBottom=40;
-  const plotW=w-padL-padR,plotH=h-padTop-padBottom;
   const n=rows.length;
+  const many=n>8;
+  const padL=36,padR=36,padTop=40,padBottom=many?72:40;
+  const h=many?252:220;
+  const w=many?Math.max(640,padL+padR+Math.max(1,n-1)*58):640;
+  const plotW=w-padL-padR,plotH=h-padTop-padBottom;
   const pts=rows.map((s,i)=>{
     const pct=Math.max(0,Math.min(100,Number(s.progress)||0));
     const x=n>1?padL+(plotW*i/(n-1)):padL+plotW/2;
@@ -448,8 +454,16 @@ function buildLineChart(rows){
   }).join("");
   const dots=pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="5" class="chart-dot"/>`).join("");
   const valueLabels=pts.map(p=>`<text x="${p.x}" y="${Math.max(16,p.y-14)}" text-anchor="middle" class="chart-value">${fmtPct(p.pct)}</text>`).join("");
-  const xLabels=pts.map(p=>`<text x="${p.x}" y="${h-14}" text-anchor="middle" class="chart-xlabel">${esc(p.label)}</text>`).join("");
-  return `<svg viewBox="0 0 ${w} ${h}" class="line-chart" preserveAspectRatio="xMidYMid meet">
+  const xLabels=pts.map(p=>{
+    const full=p.label;
+    if(many){
+      const short=full.length>20?full.slice(0,19)+"…":full;
+      return `<text x="${p.x}" y="${h-padBottom+16}" text-anchor="end" transform="rotate(-40 ${p.x} ${h-padBottom+16})" class="chart-xlabel"><title>${esc(full)}</title>${esc(short)}</text>`;
+    }
+    return `<text x="${p.x}" y="${h-14}" text-anchor="middle" class="chart-xlabel">${esc(full)}</text>`;
+  }).join("");
+  const svgAttrs=many?`style="width:${w}px;max-width:none;height:auto;display:block"`:"";
+  const svg=`<svg viewBox="0 0 ${w} ${h}" ${svgAttrs} class="line-chart" preserveAspectRatio="xMidYMid meet">
     <defs>
       <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" class="chart-grad-start"/>
@@ -463,7 +477,9 @@ function buildLineChart(rows){
     ${valueLabels}
     ${xLabels}
   </svg>`;
+  return many?`<div class="chart-scroll">${svg}</div>`:svg;
 }
+
 function renderStudentView(){
   const rows=LAST_STUDENTS.filter(s=>(s.name||"").trim().toLowerCase()===(currentStudentName||"").trim().toLowerCase());
   const container=document.getElementById("studentDetail");
@@ -568,6 +584,7 @@ function showCoursesView(){
   document.getElementById("pageSub").textContent="Reference courses and training materials. Tap a course to open its source in a new tab.";
   document.getElementById("coursesView").style.display="";
 }
+
 const QUIZZES=[
   {
     id:"qgis-fundamentals",
@@ -628,6 +645,7 @@ function renderQuizList(){
     `<li><a class="quiz-link" data-quiz="${escAttr(qz.id)}"><span class="quiz-link-title">${esc(qz.title)}</span><span class="quiz-link-meta">${esc(qz.meta)}</span></a></li>`
   ).join("");
 }
+
 function buildQuizDetailHtml(qz){
   const instructionItems=qz.instructions.map(t=>`<li>${esc(t)}</li>`).join("");
   const questions=qz.partA.map((item,i)=>{
