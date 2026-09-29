@@ -422,10 +422,10 @@ function selectMenu(e,key){
 
 function buildLineChart(rows){
   const n=rows.length;
-  const many=n>8;
+  const many=n>1;
   const padL=36,padR=36,padTop=40,padBottom=many?72:40;
   const h=many?252:220;
-  const w=many?Math.max(640,padL+padR+Math.max(1,n-1)*58):640;
+  const w=many?Math.max(640,padL+padR+Math.max(1,n-1)*70):640;
   const plotW=w-padL-padR,plotH=h-padTop-padBottom;
   const pts=rows.map((s,i)=>{
     const pct=Math.max(0,Math.min(100,Number(s.progress)||0));
