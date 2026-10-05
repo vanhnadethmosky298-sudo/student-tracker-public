@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document viewer</title>
+<style>
+:root{--bg:#eef1ee;--bar:#ffffff;--ink:#17241d;--line:#dee6df;--accent:#076b49}
+@media (prefers-color-scheme: dark){:root{--bg:#0d1511;--bar:#172019;--ink:#e9f1ec;--line:#293630;--accent:#34c98f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif}
+header{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:var(--bar);border-bottom:1px solid var(--line)}
+header span{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header a{color:var(--accent);font-weight:600;font-size:13px;text-decoration:none;white-space:nowrap}
+#pages{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px}
+canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+#msg{padding:40px 16px;text-align:center;font-size:14px}
+</style>
+</head>
+<body>
+<header><span id="title">Loading…</span><a id="dl" href="#" download>Download</a></header>
+<div id="msg">Loading document…</div>
+<div id="pages"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(async function(){
+  const msg=document.getElementById("msg");
+  const file=new URLSearchParams(location.search).get("file")||"";
+  if(!/^[\w.\-]+\.pdf$/i.test(file)){msg.textContent="No document specified.";return;}
+  document.getElementById("title").textContent=file;
+  document.getElementById("dl").href=file;
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf=await pdfjsLib.getDocument(file).promise;
+    const holder=document.getElementById("pages");
+    const width=Math.min(holder.clientWidth-32,1000);
+    const ratio=window.devicePixelRatio||1;
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const base=page.getViewport({scale:1});
+      const vp=page.getViewport({scale:(width/base.width)*ratio});
+      const c=document.createElement("canvas");
+      c.width=vp.width;c.height=vp.height;
+      c.style.width=(vp.width/ratio)+"px";
+      holder.appendChild(c);
+      await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    }
+    msg.remove();
+  }catch(e){
+    msg.innerHTML='Could not display this document. <a href="'+file+'">Open or download it directly</a>.';
+  }
+})();
+</script>
+</body>
+</html>
