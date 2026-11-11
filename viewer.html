@@ -26,9 +26,18 @@ canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 2px 12px rgba(0,0
 (async function(){
   const msg=document.getElementById("msg");
   const file=new URLSearchParams(location.search).get("file")||"";
-  if(!/^[\w.\-]+\.pdf$/i.test(file)){msg.textContent="No document specified.";return;}
+  if(!/^[\w.\-]+\.(pdf|jpe?g|png)$/i.test(file)){msg.textContent="No document specified.";return;}
   document.getElementById("title").textContent=file;
   document.getElementById("dl").href=file;
+  if(/\.(jpe?g|png)$/i.test(file)){
+    const im=new Image();
+    im.style.cssText="max-width:100%;height:auto;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18)";
+    im.onload=function(){msg.remove();};
+    im.onerror=function(){msg.innerHTML='Could not display this document. <a href="'+file+'">Open or download it directly</a>.';};
+    im.src=file;
+    document.getElementById("pages").appendChild(im);
+    return;
+  }
   try{
     pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     const pdf=await pdfjsLib.getDocument(file).promise;
